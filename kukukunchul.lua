@@ -1,1 +1,222 @@
 
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local charhrp = char:WaitForChild("HumanoidRootPart")
+
+-- Memastikan HRP terbarui jika karakter mati dan respawn
+player.CharacterAdded:Connect(function(newChar)
+	char = newChar
+	charhrp = newChar:WaitForChild("HumanoidRootPart")
+end)
+
+local enemy = Vector3.new(-43.25008773803711, 30.51099967956543, -156.47109985351562)
+local boss = Vector3.new(-44.33367919921875, 27.178205490112305, -652.2608642578125)
+
+local function teleportToPosition(targetPosition)
+	if charhrp then
+		charhrp.CFrame = CFrame.new(targetPosition)
+	end
+end
+
+-- Ambil RemoteEvents
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Event = ReplicatedStorage.rbxts_include.node_modules["@rbxts"].remo.src.container.attack
+local Event2 = ReplicatedStorage.rbxts_include.node_modules["@rbxts"].remo.src.container.startTimeLimitChallengeReq
+local Event3 = ReplicatedStorage.rbxts_include.node_modules["@rbxts"].remo.src.container.quitTimeLimitChallengeReq
+local Event4 = ReplicatedStorage.rbxts_include.node_modules["@rbxts"].remo.src.container.rebirth
+
+-- Status & Konfigurasi awal
+local _G = getgenv and getgenv() or _G
+_G.AutofarmActive = false
+_G.BossLoopCount = 30 
+local isMinimized = false
+
+-- ==========================================
+-- PEMBUATAN INTERFACE GUI + TEXTBOX
+-- ==========================================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AutofarmMenu"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- POSISI TERBARU: Dibuat lebih turun (+55) agar tombol Status ON/OFF tenggelam total di bawah layar
+local positionOpen = UDim2.new(0.5, 0, 0.85, 0)
+local positionMin = UDim2.new(0.5, 0, 1, 55) 
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 220, 0, 140)
+Frame.AnchorPoint = Vector2.new(0.5, 0.5) 
+Frame.Position = positionOpen
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.BorderSizePixel = 0
+Frame.Active = false      
+Frame.Draggable = false   
+Frame.ClipsDescendants = true -- Memotong dan menyembunyikan tombol yang amblas ke bawah layar
+Frame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 8)
+UICorner.Parent = Frame
+
+-- Judul Menu
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(0.75, 0, 0, 30)
+Title.Position = UDim2.new(0.05, 0, 0, 0)
+Title.Text = "TOWER AUTOFARM"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 14
+Title.Font = Enum.Font.SourceSansBold
+Title.BackgroundTransparency = 1
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Frame
+
+-- Tombol Strip untuk Minimize
+local MinimizeButton = Instance.new("TextButton")
+MinimizeButton.Size = UDim2.new(0, 24, 0, 24)
+MinimizeButton.Position = UDim2.new(0.85, 0, 0.03, 0)
+MinimizeButton.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+MinimizeButton.Text = "-"
+MinimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+MinimizeButton.TextSize = 18
+MinimizeButton.Font = Enum.Font.SourceSansBold
+MinimizeButton.Parent = Frame
+
+local MinimizeCorner = Instance.new("UICorner")
+MinimizeCorner.CornerRadius = UDim.new(0, 4)
+MinimizeCorner.Parent = MinimizeButton
+
+-- Tombol Toggle ON/OFF
+local ToggleButton = Instance.new("TextButton")
+ToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
+ToggleButton.Position = UDim2.new(0.05, 0, 0.25, 0)
+ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+ToggleButton.Text = "Status: OFF"
+ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleButton.TextSize = 16
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.Parent = Frame
+
+local ButtonCorner = Instance.new("UICorner")
+ButtonCorner.CornerRadius = UDim.new(0, 6)
+ButtonCorner.Parent = ToggleButton
+
+-- Label untuk Keterangan Input Box
+local InputLabel = Instance.new("TextLabel")
+InputLabel.Size = UDim2.new(0.55, 0, 0, 30)
+InputLabel.Position = UDim2.new(0.05, 0, 0.65, 0)
+InputLabel.Text = "Boss Attack Loop:"
+InputLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+InputLabel.TextSize = 14
+InputLabel.Font = Enum.Font.SourceSans
+InputLabel.BackgroundTransparency = 1
+InputLabel.TextXAlignment = Enum.TextXAlignment.Left
+InputLabel.Parent = Frame
+
+-- Komponen TEXTBOX (Kolom Input Angka)
+local AmountBox = Instance.new("TextBox")
+AmountBox.Size = UDim2.new(0.3, 0, 0, 30)
+AmountBox.Position = UDim2.new(0.65, 0, 0.65, 0)
+AmountBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+AmountBox.BorderSizePixel = 0
+AmountBox.Text = tostring(_G.BossLoopCount)
+AmountBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+AmountBox.TextSize = 14
+AmountBox.Font = Enum.Font.SourceSansBold
+AmountBox.ClearTextOnFocus = false
+AmountBox.Parent = Frame
+
+local BoxCorner = Instance.new("UICorner")
+BoxCorner.CornerRadius = UDim.new(0, 4)
+BoxCorner.Parent = AmountBox
+
+-- ==========================================
+-- LOGIKA MINIMIZE AMBLAS MAXIMAL
+-- ==========================================
+MinimizeButton.MouseButton1Click:Connect(function()
+	isMinimized = not isMinimized
+	
+	if isMinimized then
+		-- Menurunkan frame lebih dalam melewati dasar layar monitor
+		Frame:TweenPosition(positionMin, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true)
+		
+		-- Memindahkan posisi tombol '+' ke tepi paling atas frame agar tidak ikut tenggelam
+		MinimizeButton.Position = UDim2.new(0.85, 0, 0, 3)
+		MinimizeButton.Text = "+"
+	else
+		-- Mengembalikan GUI ke atas layar monitor
+		Frame:TweenPosition(positionOpen, Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true)
+		
+		-- Mengembalikan tombol ke posisi semula
+		MinimizeButton.Position = UDim2.new(0.85, 0, 0.03, 0)
+		MinimizeButton.Text = "-"
+	end
+end)
+
+-- ==========================================
+-- VALIDASI & FUNGSI TEXTBOX
+-- ==========================================
+AmountBox.FocusLost:Connect(function(enterPressed)
+	local text = AmountBox.Text
+	local number = tonumber(text)
+	
+	if number and number > 0 then
+		local cleanNumber = math.round(number)
+		_G.BossLoopCount = cleanNumber
+		AmountBox.Text = tostring(cleanNumber)
+	else
+		AmountBox.Text = tostring(_G.BossLoopCount)
+	end
+end)
+
+-- ==========================================
+-- LOGIKA AUTOFARM MENGGUNAKAN TASK.SPAWN
+-- ==========================================
+local function startAutofarmLoop()
+	task.spawn(function()
+		while _G.AutofarmActive do
+			if not _G.AutofarmActive then break end
+			teleportToPosition(enemy)
+			task.wait(1) 
+
+			for i = 2, 15 do
+				if not _G.AutofarmActive then break end
+				Event:FireServer(i)
+				task.wait(0.35)
+			end 
+			
+			if not _G.AutofarmActive then break end
+			task.wait(0.5) 
+			teleportToPosition(boss)
+			task.wait(1.5) 
+			
+			for i = 1, _G.BossLoopCount do
+				if not _G.AutofarmActive then break end
+				Event2:FireServer(3, 3, nil) 
+				task.wait(0.8)
+			end
+			
+			if not _G.AutofarmActive then break end
+			task.wait(1)
+			Event3:FireServer()
+			task.wait(1) 
+			Event4:FireServer()
+			
+			task.wait(0.3) 
+		end
+	end)
+end
+
+-- Event Klik Tombol GUI
+ToggleButton.MouseButton1Click:Connect(function()
+	_G.AutofarmActive = not _G.AutofarmActive
+	
+	if _G.AutofarmActive then
+		ToggleButton.Text = "Status: ON"
+		ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+		startAutofarmLoop()
+	else
+		ToggleButton.Text = "Status: OFF"
+		ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	end
+end)
