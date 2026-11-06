@@ -1,62 +1,20 @@
-
+-- ==========================================
+-- BUAT GUI TERLEBIH DAHULU AGAR LANGSUNG MUNCUL
+-- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-
-local function getCharacterParts()
-	local char = player.Character or player.CharacterAdded:Wait()
-	local hrp = char:WaitForChild("HumanoidRootPart", 5)
-	local humanoid = char:WaitForChild("Humanoid", 5)
-	return char, hrp, humanoid
-end
-
-local char, charhrp, humanoid = getCharacterParts()
-
-player.CharacterAdded:Connect(function(newChar)
-	char = newChar
-	charhrp = newChar:WaitForChild("HumanoidRootPart", 5)
-	humanoid = newChar:WaitForChild("Humanoid", 5)
-end)
-
-local enemy = Vector3.new(-43.25008773803711, 14.51099967956543, -156.47109985351562)
-local boss = Vector3.new(-44.33367919921875, 27.178205490112305, -652.2608642578125)
-
-local function teleportToPosition(targetPosition)
-	-- Pastikan charhrp ada dan masih berada di dalam Workspace (belum hancur)
-	if charhrp and charhrp.Parent then
-		charhrp.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
-	end
-end
-
-
-local rbxts = ReplicatedStorage:WaitForChild("rbxts_include", 15)
-local node_modules = rbxts and rbxts:WaitForChild("node_modules", 15)
-local rbxts_folder = node_modules and node_modules:WaitForChild("@rbxts", 15)
-local remo = rbxts_folder and rbxts_folder:WaitForChild("remo", 15)
-local container = remo and remo:WaitForChild("src", 15) and remo.src:WaitForChild("container", 15)
-
-local Event = container and container:WaitForChild("attack", 15)
-local Event2 = container and container:WaitForChild("startTimeLimitChallengeReq", 15)
-local Event3 = container and container:WaitForChild("quitTimeLimitChallengeReq", 15)
-local Event4 = container and container:WaitForChild("rebirth", 15)
-
-
-local myEnv = (typeof(getgenv) == "function" and getgenv()) or _G
-myEnv.AutofarmActive = false
-myEnv.BossLoopCount = myEnv.BossLoopCount or 30 
-local isMinimized = false
-
-
-local existingGui = player:WaitForChild("PlayerGui"):FindFirstChild("AutofarmMenu")
-if existingGui then
-	existingGui:Destroy()
+-- Hapus GUI lama jika ada
+if playerGui:FindFirstChild("AutofarmMenu") then
+	playerGui.AutofarmMenu:Destroy()
 end
 
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AutofarmMenu"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
+ScreenGui.Parent = playerGui
 
 local positionOpen = UDim2.new(0.5, 0, 0.85, 0)
 local positionMin = UDim2.new(0.5, 0, 1, 55) 
@@ -67,8 +25,8 @@ Frame.AnchorPoint = Vector2.new(0.5, 0.5)
 Frame.Position = positionOpen
 Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 Frame.BorderSizePixel = 0
-Frame.Active = false      
-Frame.Draggable = false   
+Frame.Active = true      
+Frame.Draggable = true   
 Frame.ClipsDescendants = true 
 Frame.Parent = ScreenGui
 
@@ -126,6 +84,10 @@ InputLabel.BackgroundTransparency = 1
 InputLabel.TextXAlignment = Enum.TextXAlignment.Left
 InputLabel.Parent = Frame
 
+local myEnv = (typeof(getgenv) == "function" and getgenv()) or _G
+myEnv.AutofarmActive = false
+myEnv.BossLoopCount = myEnv.BossLoopCount or 30 
+
 local AmountBox = Instance.new("TextBox")
 AmountBox.Size = UDim2.new(0.3, 0, 0, 30)
 AmountBox.Position = UDim2.new(0.65, 0, 0.65, 0)
@@ -142,6 +104,7 @@ local BoxCorner = Instance.new("UICorner")
 BoxCorner.CornerRadius = UDim.new(0, 4)
 BoxCorner.Parent = AmountBox
 
+local isMinimized = false
 MinimizeButton.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
 	if isMinimized then
@@ -155,19 +118,60 @@ MinimizeButton.MouseButton1Click:Connect(function()
 	end
 end)
 
-AmountBox.FocusLost:Connect(function(enterPressed)
-	local text = AmountBox.Text
-	local number = tonumber(text)
+AmountBox.FocusLost:Connect(function()
+	local number = tonumber(AmountBox.Text)
 	if number and number > 0 then
-		local cleanNumber = math.round(number)
-		myEnv.BossLoopCount = cleanNumber
-		AmountBox.Text = tostring(cleanNumber)
+		myEnv.BossLoopCount = math.round(number)
+		AmountBox.Text = tostring(myEnv.BossLoopCount)
 	else
 		AmountBox.Text = tostring(myEnv.BossLoopCount)
 	end
 end)
 
+-- ==========================================
+-- INISIALISASI KARAKTER & REMOTE DI BACKGROUND
+-- ==========================================
+local char, charhrp, humanoid
+local function updateCharacter(newChar)
+	char = newChar
+	charhrp = newChar:WaitForChild("HumanoidRootPart", 5)
+	humanoid = newChar:WaitForChild("Humanoid", 5)
+end
 
+if player.Character then
+	updateCharacter(player.Character)
+end
+player.CharacterAdded:Connect(updateCharacter)
+
+local enemy = Vector3.new(-43.25008773803711, 14.51099967956543, -156.47109985351562)
+local boss = Vector3.new(-44.33367919921875, 27.178205490112305, -652.2608642578125)
+
+local function teleportToPosition(targetPosition)
+	if charhrp and charhrp.Parent then
+		charhrp.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
+	end
+end
+
+-- Cari Remote secara aman tanpa membuat script freeze
+local Event, Event2, Event3, Event4
+task.spawn(function()
+	local rbxts = ReplicatedStorage:WaitForChild("rbxts_include", 30)
+	local node_modules = rbxts and rbxts:WaitForChild("node_modules", 30)
+	local rbxts_folder = node_modules and node_modules:WaitForChild("@rbxts", 30)
+	local remo = rbxts_folder and rbxts_folder:WaitForChild("remo", 30)
+	local container = remo and remo:WaitForChild("src", 30) and remo.src:WaitForChild("container", 30)
+
+	if container then
+		Event = container:WaitForChild("attack", 10)
+		Event2 = container:WaitForChild("startTimeLimitChallengeReq", 10)
+		Event3 = container:WaitForChild("quitTimeLimitChallengeReq", 10)
+		Event4 = container:WaitForChild("rebirth", 10)
+	end
+end)
+
+-- ==========================================
+-- LOGIKA AUTOFARM
+-- ==========================================
 local function startAutofarmLoop()
 	task.spawn(function()
 		while myEnv.AutofarmActive do
@@ -185,9 +189,7 @@ local function startAutofarmLoop()
 			for i = 1, 15 do
 				if not myEnv.AutofarmActive then break end
 				if Event then
-					pcall(function()
-						Event:FireServer(i)
-					end)
+					pcall(function() Event:FireServer(i) end)
 				end
 				task.wait(0.3)
 			end 
@@ -201,29 +203,17 @@ local function startAutofarmLoop()
 			for i = 1, myEnv.BossLoopCount do
 				if not myEnv.AutofarmActive then break end
 				if Event2 then
-					pcall(function()
-						Event2:FireServer(3, 3, nil) 
-					end)
+					pcall(function() Event2:FireServer(3, 3, nil) end)
 				end
 				task.wait(0.5)
 			end
 			
 			if not myEnv.AutofarmActive then break end
 			task.wait(1.5)
-			
-			if Event3 then
-				pcall(function()
-					Event3:FireServer()
-				end)
-			end
+			if Event3 then pcall(function() Event3:FireServer() end) end
 			
 			task.wait(1.5)
-			
-			if Event4 then
-				pcall(function()
-					Event4:FireServer()
-				end)
-			end
+			if Event4 then pcall(function() Event4:FireServer() end) end
 			
 			task.wait(3)
 		end
@@ -240,4 +230,4 @@ ToggleButton.MouseButton1Click:Connect(function()
 		ToggleButton.Text = "Status: OFF"
 		ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 	end
-end)l
+end)
