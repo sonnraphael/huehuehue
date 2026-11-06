@@ -1,9 +1,13 @@
 -- ==========================================
--- TOWER AUTOFARM DENGAN TIMING CHAIN SYSTEM
+-- TOWER AUTOFARM - TIMING CHAIN & NO CACHING
 -- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
+
+-- Variabel Lokal (Tanpa System Caching)
+local autofarmActive = false
+local bossLoopCount = 30
 
 local char = player.Character or player.CharacterAdded:Wait()
 local charhrp = char:WaitForChild("HumanoidRootPart")
@@ -28,92 +32,6 @@ local Event = container:WaitForChild("attack")
 local Event2 = container:WaitForChild("startTimeLimitChallengeReq")
 local Event3 = container:WaitForChild("quitTimeLimitChallengeReq")
 local Event4 = container:WaitForChild("rebirth")
-
--- ==========================================
--- OPTIMASI LINGKUNGAN (ENVIRONMENT CONFIG)
--- ==========================================
-local myEnv = (typeof(getgenv) == "function" and getgenv()) or _G
-myEnv.AutofarmActive = false
-myEnv.BossLoopCount = 30 
-local isMinimized = false
-
--- ==========================================
--- TIMING CHAIN SYSTEM (PENGELOLA WAKTU BERURUTAN)
--- ==========================================
-local TimingChain = {}
-TimingChain.__index = TimingChain
-
-function TimingChain.new(conditionFunc)
-	local self = setmetatable({
-		steps = {},
-		running = false,
-		condition = conditionFunc
-	}, TimingChain)
-	return self
-end
-
-function TimingChain:Add(action, delay)
-	table.insert(self.steps, {action = action, delay = delay or 0})
-	return self
-end
-
-function TimingChain:Execute()
-	if self.running then return end
-	self.running = true
-	
-	task.spawn(function()
-		while self.condition() do
-			for _, step in ipairs(self.steps) do
-				if not self.condition() then break end
-				pcall(step.action)
-				task.wait(step.delay)
-			end
-		end
-		self.running = false
-	end)
-end
-
--- Membangun Rantai Waktu (Timing Chain) Autofarm
-local autofarmChain = TimingChain.new(function() return myEnv.AutofarmActive end)
-
--- 1. Teleport ke Enemy
-autofarmChain:Add(function()
-	teleportToPosition(enemy)
-end, 1)
-
--- 2. Serang Enemy (15x)
-autofarmChain:Add(function()
-	for i = 1, 15 do
-		if not myEnv.AutofarmActive then break end
-		Event:FireServer(i)
-		task.wait(0.3)
-	end 
-end, 1)
-
--- 3. Teleport ke Boss
-autofarmChain:Add(function()
-	teleportToPosition(boss)
-end, 3)
-
--- 4. Serang Boss (Sesuai BossLoopCount)
-autofarmChain:Add(function()
-	for i = 1, myEnv.BossLoopCount do
-		if not myEnv.AutofarmActive then break end
-		Event2:FireServer(3, 3, nil) 
-		task.wait(0.5)
-	end
-end, 1.5)
-
--- 5. Quit Challenge
-autofarmChain:Add(function()
-	Event3:FireServer()
-end, 1.5)
-
--- 6. Rebirth & Jeda Siklus Akhir
-autofarmChain:Add(function()
-	Event4:FireServer()
-end, 3)
-
 
 -- ==========================================
 -- PEMBUATAN INTERFACE GUI + TEXTBOX
@@ -201,7 +119,7 @@ AmountBox.Size = UDim2.new(0.3, 0, 0, 30)
 AmountBox.Position = UDim2.new(0.65, 0, 0.65, 0)
 AmountBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 AmountBox.BorderSizePixel = 0
-AmountBox.Text = tostring(myEnv.BossLoopCount)
+AmountBox.Text = tostring(bossLoopCount)
 AmountBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 AmountBox.TextSize = 14
 AmountBox.Font = Enum.Font.SourceSansBold
@@ -212,6 +130,7 @@ local BoxCorner = Instance.new("UICorner")
 BoxCorner.CornerRadius = UDim.new(0, 4)
 BoxCorner.Parent = AmountBox
 
+local isMinimized = false
 MinimizeButton.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
 	if isMinimized then
@@ -228,20 +147,83 @@ end)
 AmountBox.FocusLost:Connect(function()
 	local number = tonumber(AmountBox.Text)
 	if number and number > 0 then
-		local cleanNumber = math.round(number)
-		myEnv.BossLoopCount = cleanNumber
-		AmountBox.Text = tostring(cleanNumber)
+		bossLoopCount = math.round(number)
+		AmountBox.Text = tostring(bossLoopCount)
 	else
-		AmountBox.Text = tostring(myEnv.BossLoopCount)
+		AmountBox.Text = tostring(bossLoopCount)
 	end
 end)
 
+-- ==========================================
+-- TIMING CHAIN AUTOFARM (DENGAN KALKULASI DURASI)
+-- ==========================================
+local function startAutofarmLoop()
+	task.spawn(function()
+		while autofarmActive do
+			if not autofarmActive then break end
+
+			-- -------------------------------------------------------------------------
+			-- TASK 1: ENEMY PHASE
+			-- Kalkulasi Durasi: 1s (wait) + 1s (settle) + (15 * 0.3s) + 1s (cooldown) = 7.5 detik
+			-- -------------------------------------------------------------------------
+			local enemyTaskDuration = 1 + 1 + (15 * 0.3) + 1
+			task.spawn(function()
+				task.wait(1)
+				teleportToPosition(enemy)
+				task.wait(1)
+				for i = 1, 15 do
+					if not autofarmActive then break end
+					pcall(function() Event:FireServer(i) end)
+					task.wait(0.3)
+				end
+				task.wait(1)
+			end)
+			task.wait(enemyTaskDuration + 1) -- Jeda waktu total task + 1 detik pemisah
+
+			if not autofarmActive then break end
+
+			-- -------------------------------------------------------------------------
+			-- TASK 2: BOSS PHASE
+			-- Kalkulasi Durasi: 3s (teleport settle) + (bossLoopCount * 0.5s) + 1.5s = 4.5s + (bossLoopCount * 0.5s)
+			-- -------------------------------------------------------------------------
+			local bossTaskDuration = 3 + (bossLoopCount * 0.5) + 1.5
+			task.spawn(function()
+				teleportToPosition(boss)
+				task.wait(3)
+				for i = 1, bossLoopCount do
+					if not autofarmActive then break end
+					pcall(function() Event2:FireServer(3, 3, nil) end)
+					task.wait(0.5)
+				end
+				task.wait(1.5)
+			end)
+			task.wait(bossTaskDuration + 1) -- Jeda waktu total task + 1 detik pemisah
+
+			if not autofarmActive then break end
+
+			-- -------------------------------------------------------------------------
+			-- TASK 3: QUIT & REBIRTH PHASE
+			-- Kalkulasi Durasi: 1.5s (quit) + 1.5s (rebirth) + 3s (cooldown akhir) = 6 detik
+			-- -------------------------------------------------------------------------
+			local finishTaskDuration = 1.5 + 1.5 + 3
+			task.spawn(function()
+				pcall(function() Event3:FireServer() end)
+				task.wait(1.5)
+				pcall(function() Event4:FireServer() end)
+				task.wait(1.5)
+				task.wait(3)
+			end)
+			task.wait(finishTaskDuration + 1) -- Jeda waktu total task + 1 detik pemisah siklus berikutnya
+		end
+	end)
+end
+
 ToggleButton.MouseButton1Click:Connect(function()
-	myEnv.AutofarmActive = not myEnv.AutofarmActive
-	if myEnv.AutofarmActive then
+	autofarmActive = not autofarmActive
+	if autofarmActive then
 		ToggleButton.Text = "Status: ON"
 		ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-		autofarmChain:Execute()
+		startAutofarmLoop()
 	else
 		ToggleButton.Text = "Status: OFF"
 		ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
