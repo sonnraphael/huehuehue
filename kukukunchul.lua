@@ -1,39 +1,58 @@
+
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
-local char = player.Character or player.CharacterAdded:Wait()
-local charhrp = char:WaitForChild("HumanoidRootPart")
+
+
+local function getCharacterParts()
+	local char = player.Character or player.CharacterAdded:Wait()
+	local hrp = char:WaitForChild("HumanoidRootPart", 5)
+	local humanoid = char:WaitForChild("Humanoid", 5)
+	return char, hrp, humanoid
+end
+
+local char, charhrp, humanoid = getCharacterParts()
 
 player.CharacterAdded:Connect(function(newChar)
 	char = newChar
-	charhrp = newChar:WaitForChild("HumanoidRootPart")
+	charhrp = newChar:WaitForChild("HumanoidRootPart", 5)
+	humanoid = newChar:WaitForChild("Humanoid", 5)
 end)
 
 local enemy = Vector3.new(-43.25008773803711, 14.51099967956543, -156.47109985351562)
 local boss = Vector3.new(-44.33367919921875, 27.178205490112305, -652.2608642578125)
 
 local function teleportToPosition(targetPosition)
-	if charhrp then
+	-- Pastikan charhrp ada dan masih berada di dalam Workspace (belum hancur)
+	if charhrp and charhrp.Parent then
 		charhrp.CFrame = CFrame.new(targetPosition + Vector3.new(0, 3, 0))
 	end
 end
 
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local Event = ReplicatedStorage.rbxts_include.node_modules["@rbxts"].remo.src.container.attack
-local Event2 = ReplicatedStorage.rbxts_include.node_modules["@rbxts"].remo.src.container.startTimeLimitChallengeReq
-local Event3 = ReplicatedStorage.rbxts_include.node_modules["@rbxts"].remo.src.container.quitTimeLimitChallengeReq
-local Event4 = ReplicatedStorage.rbxts_include.node_modules["@rbxts"].remo.src.container.rebirth
 
--- ==========================================
--- OPTIMASI LINGKUNGAN (ENVIRONMENT CONFIG)
--- ==========================================
+local rbxts = ReplicatedStorage:WaitForChild("rbxts_include", 15)
+local node_modules = rbxts and rbxts:WaitForChild("node_modules", 15)
+local rbxts_folder = node_modules and node_modules:WaitForChild("@rbxts", 15)
+local remo = rbxts_folder and rbxts_folder:WaitForChild("remo", 15)
+local container = remo and remo:WaitForChild("src", 15) and remo.src:WaitForChild("container", 15)
+
+local Event = container and container:WaitForChild("attack", 15)
+local Event2 = container and container:WaitForChild("startTimeLimitChallengeReq", 15)
+local Event3 = container and container:WaitForChild("quitTimeLimitChallengeReq", 15)
+local Event4 = container and container:WaitForChild("rebirth", 15)
+
+
 local myEnv = (typeof(getgenv) == "function" and getgenv()) or _G
 myEnv.AutofarmActive = false
-myEnv.BossLoopCount = 30 
+myEnv.BossLoopCount = myEnv.BossLoopCount or 30 
 local isMinimized = false
 
--- ==========================================
--- PEMBUATAN INTERFACE GUI + TEXTBOX
--- ==========================================
+
+local existingGui = player:WaitForChild("PlayerGui"):FindFirstChild("AutofarmMenu")
+if existingGui then
+	existingGui:Destroy()
+end
+
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "AutofarmMenu"
 ScreenGui.ResetOnSpawn = false
@@ -148,20 +167,28 @@ AmountBox.FocusLost:Connect(function(enterPressed)
 	end
 end)
 
--- ==========================================
--- LOGIKA AUTOFARM
--- ==========================================
+
 local function startAutofarmLoop()
 	task.spawn(function()
 		while myEnv.AutofarmActive do
 			if not myEnv.AutofarmActive then break end
+			
+			if not humanoid or humanoid.Health <= 0 then
 				task.wait(1)
+				continue
+			end
+
+			task.wait(1)
 			teleportToPosition(enemy)
 			task.wait(1)
 
 			for i = 1, 15 do
 				if not myEnv.AutofarmActive then break end
-				Event:FireServer(i)
+				if Event then
+					pcall(function()
+						Event:FireServer(i)
+					end)
+				end
 				task.wait(0.3)
 			end 
 			
@@ -173,16 +200,30 @@ local function startAutofarmLoop()
 			
 			for i = 1, myEnv.BossLoopCount do
 				if not myEnv.AutofarmActive then break end
-				Event2:FireServer(3, 3, nil) 
+				if Event2 then
+					pcall(function()
+						Event2:FireServer(3, 3, nil) 
+					end)
+				end
 				task.wait(0.5)
 			end
 			
 			if not myEnv.AutofarmActive then break end
 			task.wait(1.5)
-			Event3:FireServer()
+			
+			if Event3 then
+				pcall(function()
+					Event3:FireServer()
+				end)
+			end
 			
 			task.wait(1.5)
-			Event4:FireServer()
+			
+			if Event4 then
+				pcall(function()
+					Event4:FireServer()
+				end)
+			end
 			
 			task.wait(3)
 		end
@@ -199,4 +240,4 @@ ToggleButton.MouseButton1Click:Connect(function()
 		ToggleButton.Text = "Status: OFF"
 		ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 	end
-end)
+end)l
