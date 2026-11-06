@@ -157,7 +157,7 @@ local function startAutofarmLoop()
 			if not myEnv.AutofarmActive then break end
 				task.wait(2)
 			teleportToPosition(enemy)
-			task.wait(0.2)
+			task.wait(1)
 
 			for i = 2, 15 do
 				if not myEnv.AutofarmActive then break end
