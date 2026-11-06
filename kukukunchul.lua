@@ -1,11 +1,10 @@
 -- ==========================================
--- TOWER AUTOFARM - TIMING CHAIN & NO CACHING
+-- TOWER AUTOFARM - EFFICIENT TIMING CHAIN
 -- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
--- Variabel Lokal (Tanpa System Caching)
 local autofarmActive = false
 local bossLoopCount = 30
 
@@ -155,7 +154,7 @@ AmountBox.FocusLost:Connect(function()
 end)
 
 -- ==========================================
--- TIMING CHAIN AUTOFARM (DENGAN KALKULASI DURASI)
+-- TIMING CHAIN AUTOFARM (OPTIMIZED & FAST)
 -- ==========================================
 local function startAutofarmLoop()
 	task.spawn(function()
@@ -163,57 +162,54 @@ local function startAutofarmLoop()
 			if not autofarmActive then break end
 
 			-- -------------------------------------------------------------------------
-			-- TASK 1: ENEMY PHASE
-			-- Kalkulasi Durasi: 1s (wait) + 1s (settle) + (15 * 0.3s) + 1s (cooldown) = 7.5 detik
+			-- TASK 1: ENEMY PHASE (Delay dipersingkat: 0.4s & 0.2s per attack)
 			-- -------------------------------------------------------------------------
-			local enemyTaskDuration = 1 + 1 + (15 * 0.3) + 1
+			local enemyTaskDuration = 0.4 + 0.4 + (15 * 0.2) + 0.5
 			task.spawn(function()
-				task.wait(1)
+				task.wait(0.4)
 				teleportToPosition(enemy)
-				task.wait(1)
+				task.wait(0.4)
 				for i = 1, 15 do
 					if not autofarmActive then break end
 					pcall(function() Event:FireServer(i) end)
-					task.wait(0.3)
+					task.wait(0.2)
 				end
-				task.wait(1)
+				task.wait(0.5)
 			end)
-			task.wait(enemyTaskDuration + 1) -- Jeda waktu total task + 1 detik pemisah
+			task.wait(enemyTaskDuration + 1)
 
 			if not autofarmActive then break end
 
 			-- -------------------------------------------------------------------------
-			-- TASK 2: BOSS PHASE
-			-- Kalkulasi Durasi: 3s (teleport settle) + (bossLoopCount * 0.5s) + 1.5s = 4.5s + (bossLoopCount * 0.5s)
+			-- TASK 2: BOSS PHASE (Delay dipersingkat: 1.5s & 0.3s per boss loop)
 			-- -------------------------------------------------------------------------
-			local bossTaskDuration = 3 + (bossLoopCount * 0.5) + 1.5
+			local bossTaskDuration = 1.5 + (bossLoopCount * 0.3) + 0.8
 			task.spawn(function()
 				teleportToPosition(boss)
-				task.wait(3)
+				task.wait(1.5)
 				for i = 1, bossLoopCount do
 					if not autofarmActive then break end
 					pcall(function() Event2:FireServer(3, 3, nil) end)
-					task.wait(0.5)
+					task.wait(0.3)
 				end
-				task.wait(1.5)
+				task.wait(0.8)
 			end)
-			task.wait(bossTaskDuration + 1) -- Jeda waktu total task + 1 detik pemisah
+			task.wait(bossTaskDuration + 1)
 
 			if not autofarmActive then break end
 
 			-- -------------------------------------------------------------------------
-			-- TASK 3: QUIT & REBIRTH PHASE
-			-- Kalkulasi Durasi: 1.5s (quit) + 1.5s (rebirth) + 3s (cooldown akhir) = 6 detik
+			-- TASK 3: QUIT & REBIRTH PHASE (Delay dipercepat)
 			-- -------------------------------------------------------------------------
-			local finishTaskDuration = 1.5 + 1.5 + 3
+			local finishTaskDuration = 0.8 + 0.8 + 1.0
 			task.spawn(function()
 				pcall(function() Event3:FireServer() end)
-				task.wait(1.5)
+				task.wait(0.8)
 				pcall(function() Event4:FireServer() end)
-				task.wait(1.5)
-				task.wait(3)
+				task.wait(0.8)
+				task.wait(1.0)
 			end)
-			task.wait(finishTaskDuration + 1) -- Jeda waktu total task + 1 detik pemisah siklus berikutnya
+			task.wait(finishTaskDuration + 1)
 		end
 	end)
 end
