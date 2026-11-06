@@ -155,14 +155,14 @@ local function startAutofarmLoop()
 	task.spawn(function()
 		while myEnv.AutofarmActive do
 			if not myEnv.AutofarmActive then break end
-				task.wait(2)
+				task.wait(1)
 			teleportToPosition(enemy)
 			task.wait(1)
 
-			for i = 2, 15 do
+			for i = 1, 15 do
 				if not myEnv.AutofarmActive then break end
 				Event:FireServer(i)
-				task.wait(0.18)
+				task.wait(0.3)
 			end 
 			
 			if not myEnv.AutofarmActive then break end
