@@ -1,5 +1,5 @@
 -- ==========================================
--- TOWER AUTOFARM - DUAL TOGGLE + INDIVIDUAL INPUT BOXES
+-- TOWER AUTOFARM - SIDE-BY-SIDE TEXTBOX LAYOUT
 -- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,8 +11,8 @@ local bossFarmActive = false
 local rebirthFarmActive = false
 local isFarmRunning = false
 
-local enemyLoopCount = 1   -- Berapa kali farm enemy diulang
-local bossLoopCount = 30   -- Berapa kali penaklukan boss dilakukan
+local enemyLoopCount = 1   -- Jumlah pengulangan farm enemy
+local bossLoopCount = 30   -- Jumlah penaklukan boss
 
 local char = player.Character or player.CharacterAdded:Wait()
 local charhrp = char:WaitForChild("HumanoidRootPart")
@@ -39,7 +39,7 @@ local Event3 = container:WaitForChild("quitTimeLimitChallengeReq")
 local Event4 = container:WaitForChild("rebirth")
 
 -- ==========================================
--- PEMBUATAN INTERFACE GUI (DENGAN INPUT BOX DI SAMPING)
+-- PEMBUATAN INTERFACE GUI
 -- ==========================================
 local playerGui = player:WaitForChild("PlayerGui")
 if playerGui:FindFirstChild("AutofarmMenu") then
@@ -55,7 +55,7 @@ local positionOpen = UDim2.new(0.5, 0, 0.85, 0)
 local positionMin = UDim2.new(0.5, 0, 1, 55) 
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 230, 0, 195) -- Disesuaikan agar rapi
+Frame.Size = UDim2.new(0, 230, 0, 195)
 Frame.AnchorPoint = Vector2.new(0.5, 0.5) 
 Frame.Position = positionOpen
 Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -94,7 +94,7 @@ local MinimizeCorner = Instance.new("UICorner")
 MinimizeCorner.CornerRadius = UDim.new(0, 4)
 MinimizeCorner.Parent = MinimizeButton
 
--- 1. Enemy Farm Toggle & Input Box (Samping Kanan)
+-- 1. Enemy Farm Toggle & Input Box Tepat di Samping Kanan
 local EnemyToggleBtn = Instance.new("TextButton")
 EnemyToggleBtn.Size = UDim2.new(0.58, 0, 0, 30)
 EnemyToggleBtn.Position = UDim2.new(0.05, 0, 0.16, 0)
@@ -125,7 +125,7 @@ local EnemyBoxCorner = Instance.new("UICorner")
 EnemyBoxCorner.CornerRadius = UDim.new(0, 4)
 EnemyBoxCorner.Parent = EnemyBox
 
--- 2. Boss Farm Toggle & Input Box (Samping Kanan)
+-- 2. Boss Farm Toggle & Input Box Tepat di Samping Kanan
 local BossToggleBtn = Instance.new("TextButton")
 BossToggleBtn.Size = UDim2.new(0.58, 0, 0, 30)
 BossToggleBtn.Position = UDim2.new(0.05, 0, 0.38, 0)
@@ -217,22 +217,22 @@ local function startFarmManager()
 		while enemyFarmActive or bossFarmActive or rebirthFarmActive do
 			-- 1. Jalankan Enemy Farm (Sesuai jumlah enemyLoopCount)
 			if enemyFarmActive then
-				if not enemyFarmActive then break end
+				if not enemyFarmActive then return end
 				
 				for r = 1, enemyLoopCount do
-					if not enemyFarmActive then break end
+					if not enemyFarmActive then return end
 					teleportToPosition(enemy)
 					
 					task.wait(0.4)
-					if not enemyFarmActive then break end
+					if not enemyFarmActive then return end
 					
 					for i = 1, 15 do
-						if not enemyFarmActive then break end
+						if not enemyFarmActive then return end
 						pcall(function() Event:FireServer(i) end)
 						task.wait(0.2)
 					end
 					
-					if not enemyFarmActive then break end
+					if not enemyFarmActive then return end
 					task.wait(1.0)
 				end
 			end
@@ -241,14 +241,14 @@ local function startFarmManager()
 
 			-- 2. Jalankan Boss Farm (Sesuai jumlah bossLoopCount)
 			if bossFarmActive then
-				if not bossFarmActive then break end
+				if not bossFarmActive then return end
 				teleportToPosition(boss)
 				
 				task.wait(1.5)
-				if not bossFarmActive then break end
+				if not bossFarmActive then return end
 				
 				for i = 1, bossLoopCount do
-					if not bossFarmActive then break end
+					if not bossFarmActive then return end
 					pcall(function() Event2:FireServer(3, 3, nil) end)
 					task.wait(0.3)
 				end
@@ -260,11 +260,11 @@ local function startFarmManager()
 
 			-- 3. Jalankan Auto Rebirth Task
 			if rebirthFarmActive then
-				if not rebirthFarmActive then break end
+				if not rebirthFarmActive then return end
 				pcall(function() Event3:FireServer() end)
 				task.wait(0.8)
 				
-				if not rebirthFarmActive then break end
+				if not rebirthFarmActive then return end
 				pcall(function() Event4:FireServer() end)
 				task.wait(2.0)
 			end
@@ -289,4 +289,27 @@ EnemyToggleBtn.MouseButton1Click:Connect(function()
 end)
 
 -- Event Tombol Boss Farm
-BossToggleBtn.MouseButton1Click:Connect(
+BossToggleBtn.MouseButton1Click:Connect(function()
+	bossFarmActive = not bossFarmActive
+	if bossFarmActive then
+		BossToggleBtn.Text = "Boss: ON"
+		BossToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+		startFarmManager()
+	else
+		BossToggleBtn.Text = "Boss: OFF"
+		BossToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	end
+end)
+
+-- Event Tombol Auto Rebirth
+RebirthToggleBtn.MouseButton1Click:Connect(function()
+	rebirthFarmActive = not rebirthFarmActive
+	if rebirthFarmActive then
+		RebirthToggleBtn.Text = "Auto Rebirth: ON"
+		RebirthToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+		startFarmManager()
+	else
+		RebirthToggleBtn.Text = "Auto Rebirth: OFF"
+		RebirthToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	end
+end)
