@@ -1,18 +1,16 @@
--- ==========================================
--- TOWER AUTOFARM - DYNAMIC BOSS REMOTE ARGUMENT
--- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
--- Variabel Status & Konfigurasi (Tanpa Caching)
 local enemyFarmActive = false
 local bossFarmActive = false
 local rebirthFarmActive = false
 local isFarmRunning = false
 
-local enemyLoopCount = 3   -- Jumlah pengulangan farm enemy
-local bossLoopCount = 50-- Nilai yang dikirim ke remote event boss (default 3)
+local enemyLoopCount = 3    
+local bossPower = 50 
+local bossLoop = 3  
+local bossWaitTime = 30.0 -- Delay default setelah boss challenge (dalam detik)
 
 local char = player.Character or player.CharacterAdded:Wait()
 local charhrp = char:WaitForChild("HumanoidRootPart")
@@ -52,7 +50,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.Parent = playerGui
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 240, 0, 240)
+Frame.Size = UDim2.new(0, 240, 0, 290) -- Tinggi Frame disesuaikan
 Frame.AnchorPoint = Vector2.new(0.5, 0.5) 
 Frame.Position = UDim2.new(0.5, 0, 0.5, 0)
 Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -109,14 +107,14 @@ ContentContainer.Position = UDim2.new(0, 0, 0, 32)
 ContentContainer.BackgroundTransparency = 1
 ContentContainer.Parent = Frame
 
--- 1. Enemy Farm Toggle (Atas) & Textbox di Bawahnya
+-- 1. Enemy Farm Toggle & Textbox
 local EnemyToggleBtn = Instance.new("TextButton")
-EnemyToggleBtn.Size = UDim2.new(0.88, 0, 0, 30)
-EnemyToggleBtn.Position = UDim2.new(0.06, 0, 0.05, 0)
+EnemyToggleBtn.Size = UDim2.new(0.88, 0, 0, 26)
+EnemyToggleBtn.Position = UDim2.new(0.06, 0, 0, 6)
 EnemyToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 EnemyToggleBtn.Text = "Enemy Farm: OFF"
 EnemyToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-EnemyToggleBtn.TextSize = 13
+EnemyToggleBtn.TextSize = 12
 EnemyToggleBtn.Font = Enum.Font.SourceSansBold
 EnemyToggleBtn.Parent = ContentContainer
 
@@ -125,14 +123,14 @@ EnemyCorner.CornerRadius = UDim.new(0, 6)
 EnemyCorner.Parent = EnemyToggleBtn
 
 local EnemyBox = Instance.new("TextBox")
-EnemyBox.Size = UDim2.new(0.88, 0, 0, 26)
-EnemyBox.Position = UDim2.new(0.06, 0, 0.23, 0)
+EnemyBox.Size = UDim2.new(0.88, 0, 0, 22)
+EnemyBox.Position = UDim2.new(0.06, 0, 0, 34)
 EnemyBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 EnemyBox.BorderSizePixel = 0
 EnemyBox.Text = tostring(enemyLoopCount)
 EnemyBox.PlaceholderText = "Jumlah Loop Enemy"
 EnemyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-EnemyBox.TextSize = 12
+EnemyBox.TextSize = 11
 EnemyBox.Font = Enum.Font.SourceSansBold
 EnemyBox.ClearTextOnFocus = false
 EnemyBox.Parent = ContentContainer
@@ -141,14 +139,14 @@ local EnemyBoxCorner = Instance.new("UICorner")
 EnemyBoxCorner.CornerRadius = UDim.new(0, 4)
 EnemyBoxCorner.Parent = EnemyBox
 
--- 2. Boss Farm Toggle (Tengah) & Textbox di Bawahnya
+-- 2. Boss Farm Toggle & Textbox Power
 local BossToggleBtn = Instance.new("TextButton")
-BossToggleBtn.Size = UDim2.new(0.88, 0, 0, 30)
-BossToggleBtn.Position = UDim2.new(0.06, 0, 0.43, 0)
+BossToggleBtn.Size = UDim2.new(0.88, 0, 0, 26)
+BossToggleBtn.Position = UDim2.new(0.06, 0, 0, 60)
 BossToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 BossToggleBtn.Text = "Boss Farm: OFF"
 BossToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-BossToggleBtn.TextSize = 13
+BossToggleBtn.TextSize = 12
 BossToggleBtn.Font = Enum.Font.SourceSansBold
 BossToggleBtn.Parent = ContentContainer
 
@@ -157,14 +155,14 @@ BossCorner.CornerRadius = UDim.new(0, 6)
 BossCorner.Parent = BossToggleBtn
 
 local BossBox = Instance.new("TextBox")
-BossBox.Size = UDim2.new(0.88, 0, 0, 26)
-BossBox.Position = UDim2.new(0.06, 0, 0.61, 0)
+BossBox.Size = UDim2.new(0.88, 0, 0, 22)
+BossBox.Position = UDim2.new(0.06, 0, 0, 88)
 BossBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 BossBox.BorderSizePixel = 0
-BossBox.Text = tostring(bossLoopCount)
+BossBox.Text = tostring(bossPower)
 BossBox.PlaceholderText = "Nilai Remote Boss"
 BossBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-BossBox.TextSize = 12
+BossBox.TextSize = 11
 BossBox.Font = Enum.Font.SourceSansBold
 BossBox.ClearTextOnFocus = false
 BossBox.Parent = ContentContainer
@@ -173,14 +171,50 @@ local BossBoxCorner = Instance.new("UICorner")
 BossBoxCorner.CornerRadius = UDim.new(0, 4)
 BossBoxCorner.Parent = BossBox
 
--- 3. Auto Rebirth Toggle (Bawah)
+-- Textbox Boss Loop (Di bawah bossPower)
+local BossLoopBox = Instance.new("TextBox")
+BossLoopBox.Size = UDim2.new(0.88, 0, 0, 22)
+BossLoopBox.Position = UDim2.new(0.06, 0, 0, 112)
+BossLoopBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+BossLoopBox.BorderSizePixel = 0
+BossLoopBox.Text = tostring(bossLoop)
+BossLoopBox.PlaceholderText = "Jumlah Loop Boss"
+BossLoopBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+BossLoopBox.TextSize = 11
+BossLoopBox.Font = Enum.Font.SourceSansBold
+BossLoopBox.ClearTextOnFocus = false
+BossLoopBox.Parent = ContentContainer
+
+local BossLoopBoxCorner = Instance.new("UICorner")
+BossLoopBoxCorner.CornerRadius = UDim.new(0, 4)
+BossLoopBoxCorner.Parent = BossLoopBox
+
+-- Textbox Boss Wait Time (Pengatur delay task.wait boss)
+local BossWaitBox = Instance.new("TextBox")
+BossWaitBox.Size = UDim2.new(0.88, 0, 0, 22)
+BossWaitBox.Position = UDim2.new(0.06, 0, 0, 136)
+BossWaitBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+BossWaitBox.BorderSizePixel = 0
+BossWaitBox.Text = tostring(bossWaitTime)
+BossWaitBox.PlaceholderText = "Delay Boss Wait (detik)"
+BossWaitBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+BossWaitBox.TextSize = 11
+BossWaitBox.Font = Enum.Font.SourceSansBold
+BossWaitBox.ClearTextOnFocus = false
+BossWaitBox.Parent = ContentContainer
+
+local BossWaitBoxCorner = Instance.new("UICorner")
+BossWaitBoxCorner.CornerRadius = UDim.new(0, 4)
+BossWaitBoxCorner.Parent = BossWaitBox
+
+-- 3. Auto Rebirth Toggle
 local RebirthToggleBtn = Instance.new("TextButton")
-RebirthToggleBtn.Size = UDim2.new(0.88, 0, 0, 32)
-RebirthToggleBtn.Position = UDim2.new(0.06, 0, 0.79, 0)
+RebirthToggleBtn.Size = UDim2.new(0.88, 0, 0, 28)
+RebirthToggleBtn.Position = UDim2.new(0.06, 0, 0, 164)
 RebirthToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 RebirthToggleBtn.Text = "Auto Rebirth: OFF"
 RebirthToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-RebirthToggleBtn.TextSize = 13
+RebirthToggleBtn.TextSize = 12
 RebirthToggleBtn.Font = Enum.Font.SourceSansBold
 RebirthToggleBtn.Parent = ContentContainer
 
@@ -197,7 +231,7 @@ MinimizeButton.MouseButton1Click:Connect(function()
 		ContentContainer.Visible = false
 		MinimizeButton.Text = "+"
 	else
-		Frame:TweenSize(UDim2.new(0, 240, 0, 240), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+		Frame:TweenSize(UDim2.new(0, 240, 0, 290), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
 		ContentContainer.Visible = true
 		MinimizeButton.Text = "-"
 	end
@@ -216,10 +250,30 @@ end)
 BossBox.FocusLost:Connect(function()
 	local num = tonumber(BossBox.Text)
 	if num then
-		bossLoopCount = math.round(num)
-		BossBox.Text = tostring(bossLoopCount)
+		bossPower = math.round(num)
+		BossBox.Text = tostring(bossPower)
 	else
-		BossBox.Text = tostring(bossLoopCount)
+		BossBox.Text = tostring(bossPower)
+	end
+end)
+
+BossLoopBox.FocusLost:Connect(function()
+	local num = tonumber(BossLoopBox.Text)
+	if num and num > 0 then
+		bossLoop = math.round(num)
+		BossLoopBox.Text = tostring(bossLoop)
+	else
+		BossLoopBox.Text = tostring(bossLoop)
+	end
+end)
+
+BossWaitBox.FocusLost:Connect(function()
+	local num = tonumber(BossWaitBox.Text)
+	if num and num >= 0 then
+		bossWaitTime = num
+		BossWaitBox.Text = tostring(bossWaitTime)
+	else
+		BossWaitBox.Text = tostring(bossWaitTime)
 	end
 end)
 
@@ -254,21 +308,23 @@ local function startFarmManager()
 
 			if not enemyFarmActive and not bossFarmActive and not rebirthFarmActive then break end
 
-			-- 2. Jalankan Boss Farm (Nilai argumen pertama diambil langsung dari BossBox / bossLoopCount)
+			-- 2. Jalankan Boss Farm
 			if bossFarmActive then
-				if not bossFarmActive then break end
-				teleportToPosition(boss)
-				
-				task.wait(1.5)
-				if not bossFarmActive then break end
-				
-				pcall(function() 
-					Event2:FireServer(3, 4, bossLoopCount) 
-				end)
-				
-				task.wait(30.0)
+				for k = 1, bossLoop do
+					if not bossFarmActive then break end
+					teleportToPosition(boss)
+					
+					task.wait(1.5)
+					if not bossFarmActive then break end
+					
+					pcall(function() 
+						Event2:FireServer(3, 4, bossPower) 
+					end)
+					
+					task.wait(bossWaitTime) -- Menggunakan delay kustom dari TextBox
+				end
 			end
-
+		  
 			if not enemyFarmActive and not bossFarmActive and not rebirthFarmActive then break end
 
 			-- 3. Jalankan Auto Rebirth Task
