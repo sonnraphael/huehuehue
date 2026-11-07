@@ -1,9 +1,8 @@
 -- ==========================================
--- TOWER AUTOFARM - DRAGGABLE GUI & BOTTOM TEXTBOX
+-- TOWER AUTOFARM - DYNAMIC BOSS REMOTE ARGUMENT
 -- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local UserInputService = game:GetService("UserInputService")
 local player = Players.LocalPlayer
 
 -- Variabel Status & Konfigurasi (Tanpa Caching)
@@ -13,7 +12,7 @@ local rebirthFarmActive = false
 local isFarmRunning = false
 
 local enemyLoopCount = 1   -- Jumlah pengulangan farm enemy
-local bossLoopCount = 30   -- Jumlah penaklukan boss
+local bossLoopCount = 3    -- Nilai yang dikirim ke remote event boss (default 3)
 
 local char = player.Character or player.CharacterAdded:Wait()
 local charhrp = char:WaitForChild("HumanoidRootPart")
@@ -40,7 +39,7 @@ local Event3 = container:WaitForChild("quitTimeLimitChallengeReq")
 local Event4 = container:WaitForChild("rebirth")
 
 -- ==========================================
--- PEMBUATAN INTERFACE GUI (GERAK BEBAS & MINIMIZE BERSIH)
+-- PEMBUATAN INTERFACE GUI
 -- ==========================================
 local playerGui = player:WaitForChild("PlayerGui")
 if playerGui:FindFirstChild("AutofarmMenu") then
@@ -163,7 +162,7 @@ BossBox.Position = UDim2.new(0.06, 0, 0.61, 0)
 BossBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 BossBox.BorderSizePixel = 0
 BossBox.Text = tostring(bossLoopCount)
-BossBox.PlaceholderText = "Jumlah Loop Boss"
+BossBox.PlaceholderText = "Nilai Remote Boss"
 BossBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 BossBox.TextSize = 12
 BossBox.Font = Enum.Font.SourceSansBold
@@ -189,7 +188,7 @@ local RebirthCorner = Instance.new("UICorner")
 RebirthCorner.CornerRadius = UDim.new(0, 6)
 RebirthCorner.Parent = RebirthToggleBtn
 
--- Minimize / Maximize Logic (Menyisakan 1 Block Header)
+-- Minimize / Maximize Logic
 local isMinimized = false
 MinimizeButton.MouseButton1Click:Connect(function()
 	isMinimized = not isMinimized
@@ -216,7 +215,7 @@ end)
 
 BossBox.FocusLost:Connect(function()
 	local num = tonumber(BossBox.Text)
-	if num and num > 0 then
+	if num then
 		bossLoopCount = math.round(num)
 		BossBox.Text = tostring(bossLoopCount)
 	else
@@ -225,7 +224,7 @@ BossBox.FocusLost:Connect(function()
 end)
 
 -- ==========================================
--- MASTER FARM MANAGER (SISTEM GILIRAN / TURN-TAKING)
+-- MASTER FARM MANAGER
 -- ==========================================
 local function startFarmManager()
 	if isFarmRunning then return end
@@ -235,60 +234,57 @@ local function startFarmManager()
 		while enemyFarmActive or bossFarmActive or rebirthFarmActive do
 			-- 1. Jalankan Enemy Farm
 			if enemyFarmActive then
-				if not enemyFarmActive then return end
-				
 				for r = 1, enemyLoopCount do
-					if not enemyFarmActive then return end
+					if not enemyFarmActive then break end
 					teleportToPosition(enemy)
 					
 					task.wait(0.4)
-					if not enemyFarmActive then return end
+					if not enemyFarmActive then break end
 					
 					for i = 1, 15 do
-						if not enemyFarmActive then return end
+						if not enemyFarmActive then break end
 						pcall(function() Event:FireServer(i) end)
 						task.wait(0.2)
 					end
 					
-					if not enemyFarmActive then return end
+					if not enemyFarmActive then break end
 					task.wait(1.0)
 				end
 			end
 
 			if not enemyFarmActive and not bossFarmActive and not rebirthFarmActive then break end
 
-			-- 2. Jalankan Boss Farm
+			-- 2. Jalankan Boss Farm (Nilai argumen pertama diambil langsung dari BossBox / bossLoopCount)
 			if bossFarmActive then
-				if not bossFarmActive then return end
+				if not bossFarmActive then break end
 				teleportToPosition(boss)
 				
 				task.wait(1.5)
-				if not bossFarmActive then return end
+				if not bossFarmActive then break end
 				
-				for i = 1, bossLoopCount do
-					if not bossFarmActive then return end
-					pcall(function() Event2:FireServer(3, 3, nil) end)
-					task.wait(0.3)
-				end
+				pcall(function() 
+					Event2:FireServer(3, 4, bossLoopCount) 
+				end)
 				
-				task.wait(0.8)
+				task.wait(2.0)
 			end
 
 			if not enemyFarmActive and not bossFarmActive and not rebirthFarmActive then break end
 
 			-- 3. Jalankan Auto Rebirth Task
 			if rebirthFarmActive then
-				if not rebirthFarmActive then return end
+				if not rebirthFarmActive then break end
 				pcall(function() Event3:FireServer() end)
 				task.wait(0.8)
 				
-				if not rebirthFarmActive then return end
+				if not rebirthFarmActive then break end
 				pcall(function() Event4:FireServer() end)
 				task.wait(2.0)
 			end
 			
 			task.wait(0.1)
 		end
+		
 		isFarmRunning = false
 	end)
 end
