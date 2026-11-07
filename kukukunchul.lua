@@ -1,11 +1,13 @@
 -- ==========================================
--- TOWER AUTOFARM - EFFICIENT TIMING CHAIN
+-- TOWER AUTOFARM - DIRECT RETURN/BREAK & DUAL TOGGLE
 -- ==========================================
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 
-local autofarmActive = false
+-- Variabel Status Terpisah (Tanpa Caching)
+local enemyFarmActive = false
+local bossFarmActive = false
 local bossLoopCount = 30
 
 local char = player.Character or player.CharacterAdded:Wait()
@@ -33,7 +35,7 @@ local Event3 = container:WaitForChild("quitTimeLimitChallengeReq")
 local Event4 = container:WaitForChild("rebirth")
 
 -- ==========================================
--- PEMBUATAN INTERFACE GUI + TEXTBOX
+-- PEMBUATAN INTERFACE GUI (DUAL TOGGLE)
 -- ==========================================
 local playerGui = player:WaitForChild("PlayerGui")
 if playerGui:FindFirstChild("AutofarmMenu") then
@@ -49,7 +51,7 @@ local positionOpen = UDim2.new(0.5, 0, 0.85, 0)
 local positionMin = UDim2.new(0.5, 0, 1, 55) 
 
 local Frame = Instance.new("Frame")
-Frame.Size = UDim2.new(0, 220, 0, 140)
+Frame.Size = UDim2.new(0, 220, 0, 175)
 Frame.AnchorPoint = Vector2.new(0.5, 0.5) 
 Frame.Position = positionOpen
 Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
@@ -88,39 +90,55 @@ local MinimizeCorner = Instance.new("UICorner")
 MinimizeCorner.CornerRadius = UDim.new(0, 4)
 MinimizeCorner.Parent = MinimizeButton
 
-local ToggleButton = Instance.new("TextButton")
-ToggleButton.Size = UDim2.new(0.9, 0, 0, 35)
-ToggleButton.Position = UDim2.new(0.05, 0, 0.25, 0)
-ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-ToggleButton.Text = "Status: OFF"
-ToggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleButton.TextSize = 16
-ToggleButton.Font = Enum.Font.SourceSansBold
-ToggleButton.Parent = Frame
+-- Tombol 1: Enemy Farm Toggle
+local EnemyToggleBtn = Instance.new("TextButton")
+EnemyToggleBtn.Size = UDim2.new(0.9, 0, 0, 32)
+EnemyToggleBtn.Position = UDim2.new(0.05, 0, 0.20, 0)
+EnemyToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+EnemyToggleBtn.Text = "Enemy Farm: OFF"
+EnemyToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+EnemyToggleBtn.TextSize = 14
+EnemyToggleBtn.Font = Enum.Font.SourceSansBold
+EnemyToggleBtn.Parent = Frame
 
-local ButtonCorner = Instance.new("UICorner")
-ButtonCorner.CornerRadius = UDim.new(0, 6)
-ButtonCorner.Parent = ToggleButton
+local EnemyCorner = Instance.new("UICorner")
+EnemyCorner.CornerRadius = UDim.new(0, 6)
+EnemyCorner.Parent = EnemyToggleBtn
+
+-- Tombol 2: Boss Farm Toggle
+local BossToggleBtn = Instance.new("TextButton")
+BossToggleBtn.Size = UDim2.new(0.9, 0, 0, 32)
+BossToggleBtn.Position = UDim2.new(0.05, 0, 0.40, 0)
+BossToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+BossToggleBtn.Text = "Boss Farm: OFF"
+BossToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+BossToggleBtn.TextSize = 14
+BossToggleBtn.Font = Enum.Font.SourceSansBold
+BossToggleBtn.Parent = Frame
+
+local BossCorner = Instance.new("UICorner")
+BossCorner.CornerRadius = UDim.new(0, 6)
+BossCorner.Parent = BossToggleBtn
 
 local InputLabel = Instance.new("TextLabel")
 InputLabel.Size = UDim2.new(0.55, 0, 0, 30)
-InputLabel.Position = UDim2.new(0.05, 0, 0.65, 0)
+InputLabel.Position = UDim2.new(0.05, 0, 0.68, 0)
 InputLabel.Text = "Boss Attack Loop:"
 InputLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-InputLabel.TextSize = 14
+InputLabel.TextSize = 13
 InputLabel.Font = Enum.Font.SourceSans
 InputLabel.BackgroundTransparency = 1
 InputLabel.TextXAlignment = Enum.TextXAlignment.Left
 InputLabel.Parent = Frame
 
 local AmountBox = Instance.new("TextBox")
-AmountBox.Size = UDim2.new(0.3, 0, 0, 30)
-AmountBox.Position = UDim2.new(0.65, 0, 0.65, 0)
+AmountBox.Size = UDim2.new(0.3, 0, 0, 28)
+AmountBox.Position = UDim2.new(0.65, 0, 0.69, 0)
 AmountBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 AmountBox.BorderSizePixel = 0
 AmountBox.Text = tostring(bossLoopCount)
 AmountBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-AmountBox.TextSize = 14
+AmountBox.TextSize = 13
 AmountBox.Font = Enum.Font.SourceSansBold
 AmountBox.ClearTextOnFocus = false
 AmountBox.Parent = Frame
@@ -154,74 +172,80 @@ AmountBox.FocusLost:Connect(function()
 end)
 
 -- ==========================================
--- TIMING CHAIN AUTOFARM (OPTIMIZED & FAST)
+-- LOGIKA ENEMY FARM (DENGAN DIRECT RETURN)
 -- ==========================================
-local function startAutofarmLoop()
+local function startEnemyFarmLoop()
 	task.spawn(function()
-		while autofarmActive do
-			if not autofarmActive then break end
-
-			-- -------------------------------------------------------------------------
-			-- TASK 1: ENEMY PHASE (Delay dipersingkat: 0.4s & 0.2s per attack)
-			-- -------------------------------------------------------------------------
-			local enemyTaskDuration = 0.4 + 0.4 + (15 * 0.2) + 0.5
-			task.spawn(function()
-				task.wait(0.4)
-				teleportToPosition(enemy)
-				task.wait(0.4)
-				for i = 1, 15 do
-					if not autofarmActive then break end
-					pcall(function() Event:FireServer(i) end)
-					task.wait(0.2)
-				end
-				task.wait(0.5)
-			end)
-			task.wait(enemyTaskDuration + 1)
-
-			if not autofarmActive then break end
-
-			-- -------------------------------------------------------------------------
-			-- TASK 2: BOSS PHASE (Delay dipersingkat: 1.5s & 0.3s per boss loop)
-			-- -------------------------------------------------------------------------
-			local bossTaskDuration = 1.5 + (bossLoopCount * 0.3) + 0.8
-			task.spawn(function()
-				teleportToPosition(boss)
-				task.wait(1.5)
-				for i = 1, bossLoopCount do
-					if not autofarmActive then break end
-					pcall(function() Event2:FireServer(3, 3, nil) end)
-					task.wait(0.3)
-				end
-				task.wait(0.8)
-			end)
-			task.wait(bossTaskDuration + 1)
-
-			if not autofarmActive then break end
-
-			-- -------------------------------------------------------------------------
-			-- TASK 3: QUIT & REBIRTH PHASE (Delay dipercepat)
-			-- -------------------------------------------------------------------------
-			local finishTaskDuration = 0.8 + 0.8 + 1.0
-			task.spawn(function()
-				pcall(function() Event3:FireServer() end)
-				task.wait(0.8)
-				pcall(function() Event4:FireServer() end)
-				task.wait(0.8)
-				task.wait(1.0)
-			end)
-			task.wait(finishTaskDuration + 1)
+		while enemyFarmActive do
+			if not enemyFarmActive then return end
+			teleportToPosition(enemy)
+			
+			task.wait(0.4)
+			if not enemyFarmActive then return end
+			
+			for i = 1, 15 do
+				if not enemyFarmActive then return end
+				pcall(function() Event:FireServer(i) end)
+				task.wait(0.2)
+			end
+			
+			if not enemyFarmActive then return end
+			task.wait(1.0)
 		end
 	end)
 end
 
-ToggleButton.MouseButton1Click:Connect(function()
-	autofarmActive = not autofarmActive
-	if autofarmActive then
-		ToggleButton.Text = "Status: ON"
-		ToggleButton.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
-		startAutofarmLoop()
+-- ==========================================
+-- LOGIKA BOSS FARM (DENGAN DIRECT RETURN)
+-- ==========================================
+local function startBossFarmLoop()
+	task.spawn(function()
+		while bossFarmActive do
+			if not bossFarmActive then return end
+			teleportToPosition(boss)
+			
+			task.wait(1.5)
+			if not bossFarmActive then return end
+			
+			for i = 1, bossLoopCount do
+				if not bossFarmActive then return end
+				pcall(function() Event2:FireServer(3, 3, nil) end)
+				task.wait(0.3)
+			end
+			
+			if not bossFarmActive then return end
+			pcall(function() Event3:FireServer() end)
+			task.wait(0.8)
+			
+			if not bossFarmActive then return end
+			pcall(function() Event4:FireServer() end)
+			task.wait(2.0)
+		end
+	end)
+end
+
+-- Event Tombol Enemy Farm
+EnemyToggleBtn.MouseButton1Click:Connect(function()
+	enemyFarmActive = not enemyFarmActive
+	if enemyFarmActive then
+		EnemyToggleBtn.Text = "Enemy Farm: ON"
+		EnemyToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+		startEnemyFarmLoop()
 	else
-		ToggleButton.Text = "Status: OFF"
-		ToggleButton.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+		EnemyToggleBtn.Text = "Enemy Farm: OFF"
+		EnemyToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+	end
+end)
+
+-- Event Tombol Boss Farm
+BossToggleBtn.MouseButton1Click:Connect(function()
+	bossFarmActive = not bossFarmActive
+	if bossFarmActive then
+		BossToggleBtn.Text = "Boss Farm: ON"
+		BossToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
+		startBossFarmLoop()
+	else
+		BossToggleBtn.Text = "Boss Farm: OFF"
+		BossToggleBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 	end
 end)
