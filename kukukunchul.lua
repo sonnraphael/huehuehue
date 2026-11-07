@@ -309,11 +309,13 @@ local function startFarmManager()
 			if not enemyFarmActive and not bossFarmActive and not rebirthFarmActive then break end
 
 			-- 2. Jalankan Boss Farm
+				teleportToPosition(boss)
 			if bossFarmActive then
-				for k = 1, bossLoop do
-					if not bossFarmActive then break end
-					teleportToPosition(boss)
+					for k = 1, bossLoop do
+				
+					if not bossFarmActive then break end				
 					
+						
 					task.wait(1.5)
 					if not bossFarmActive then break end
 					
