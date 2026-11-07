@@ -11,8 +11,8 @@ local bossFarmActive = false
 local rebirthFarmActive = false
 local isFarmRunning = false
 
-local enemyLoopCount = 1   -- Jumlah pengulangan farm enemy
-local bossLoopCount = 3    -- Nilai yang dikirim ke remote event boss (default 3)
+local enemyLoopCount = 3   -- Jumlah pengulangan farm enemy
+local bossLoopCount = 50-- Nilai yang dikirim ke remote event boss (default 3)
 
 local char = player.Character or player.CharacterAdded:Wait()
 local charhrp = char:WaitForChild("HumanoidRootPart")
@@ -266,7 +266,7 @@ local function startFarmManager()
 					Event2:FireServer(3, 4, bossLoopCount) 
 				end)
 				
-				task.wait(2.0)
+				task.wait(30.0)
 			end
 
 			if not enemyFarmActive and not bossFarmActive and not rebirthFarmActive then break end
