@@ -399,6 +399,8 @@ function startFarmManager()
 			end
 
 			if not enemyFarmActive and not bossFarmActive and not rebirthFarmActive then break end
+				
+				teleportToPosition(boss)
 
 			-- 2. Jalankan Boss Farm (dengan quit challenge di awal loop agar tidak macet)
 			if bossFarmActive then
@@ -411,7 +413,7 @@ function startFarmManager()
 					task.wait(0.5)
 					
 					if not bossFarmActive then break end
-					teleportToPosition(boss)
+					
 					
 					task.wait(1.5)
 					if not bossFarmActive then break end
